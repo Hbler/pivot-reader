@@ -21,6 +21,10 @@ Cross-cutting engineering standards. Every REASONS canvas links here as its **N*
 
 Each keyboard shortcut maps to an action function; the same function is bound to an on-screen control with a visible label or `aria-label`. Controls have touch targets of at least 44px.
 
+### Buttons drop focus after a pointer click
+
+When a button is clicked or tapped (`event.detail > 0`), blur it after running its action, so Space keeps meaning play/pause. Keyboard activation (`event.detail === 0`) keeps focus.
+
 ### Lazy heavy code
 
 Libraries used by one feature (pdf.js, JSZip) are loaded with dynamic `import()` at the moment they are needed.
@@ -35,7 +39,7 @@ Libraries used by one feature (pdf.js, JSZip) are loaded with dynamic `import()`
 
 - Vitest for `src/lib/reader/` and other pure logic. No component or e2e tests.
 - Name tests by behaviour: `pivotIndex › skips leading quotes`.
-- Run `npm test && npm run check && npm run build` before calling an Operation done.
+- Run `npx prettier --check . && npm test && npm run check && npm run build` before calling an Operation done (CI runs the same steps; docs are formatted too).
 
 ## Tooling and Workflow
 

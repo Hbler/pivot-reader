@@ -2,13 +2,15 @@
 
 A personal speed reader that shows one word at a time with a fixed, highlighted focus letter.
 
+Live: https://hbler.github.io/pivot-reader/
+
 ## Overview
 
 Pivot Reader uses rapid serial visual presentation (RSVP). Each word is shown in the same spot, with one letter (the pivot, slightly left of centre) highlighted and always kept at the same screen position. Your eyes stay still and the text comes to you, at a speed you set and raise over time.
 
 It exists because apps like Readmaxx keep the useful part behind a very limited free tier, while the technique itself is simple. Everything runs in the browser and texts never leave the device.
 
-It reads pasted text, `.txt`, EPUB and PDF files, and keeps a library of documents, each with its own position. Chinese support is planned later.
+Today it reads pasted text and remembers one document with its position, speed and options. Importing `.txt`, EPUB and PDF files and a library of documents are next on the roadmap; Chinese support is planned later.
 
 ## Tech Stack
 
@@ -49,7 +51,7 @@ prototype/
 
 Each item gets its own canvas in `docs/features/`.
 
-1. **Reader core**: the prototype, ported to Svelte, with touch controls
+1. **Reader core** (shipped): the prototype, ported to Svelte, with touch controls
 2. **File import**: `.txt`, EPUB, PDF
 3. **Library**: multiple saved documents, each with its own position
 4. **Offline**: installable PWA

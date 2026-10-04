@@ -43,7 +43,7 @@ See `docs/SAFEGUARDS.md`. Never violate these without the user's explicit approv
 
 ### Checks before calling something done
 
-`npm test && npm run check && npm run build`
+`npx prettier --check . && npm test && npm run check && npm run build` (same as CI)
 
 ## Important Files
 

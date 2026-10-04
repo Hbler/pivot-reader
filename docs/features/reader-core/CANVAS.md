@@ -1,7 +1,7 @@
 # REASONS Canvas: Reader Core
 
-**Status**: approved (R/E/A/S 2026-10-04)
-**Last synced with code**: O1, O2, O3 (2026-10-04)
+**Status**: shipped (2026-10-04) — https://hbler.github.io/pivot-reader/
+**Last synced with code**: 2026-10-04, commit after 080c9e2
 
 ---
 
@@ -119,8 +119,12 @@ One control row under the stage: `‹‹ sentence` `‹ word` **Play/Pause** `wo
   - `src/lib/reader/pivot.ts` — `pivotIndex(word): number`, `splitAtPivot(word): [left, pivot, right]`
   - `src/lib/reader/timing.ts` — `delayFor(token, settings, easeInStep): number`
   - `src/lib/reader/sentence.ts` — `sentenceBounds(tokens, i): [start, end]`
+  - `src/lib/reader/types.ts` — `Token`, `Settings`, `DEFAULT_SETTINGS`, `WPM_MIN`/`WPM_MAX`, `EASE_IN_STEPS`
   - `src/lib/reader/player.svelte.ts` — `Player` class with runes state
-  - `src/lib/storage/local.ts` — safe get/set with key prefix `pivot:`
+  - `src/lib/reader/shortcuts.ts` — `actionForKey` (key → action, pure), `runAction`, `formatTimeLeft`, `SPEED_STEP`
+  - `src/lib/storage/local.ts` — `loadValue`/`saveValue`, safe access with key prefix `pivot:` (keys: `text`, `position`, `settings`)
+  - `src/lib/storage/validate.ts` — `sanitizeSettings`, `clampPosition` for restored state
+  - `src/lib/sample-text.ts` — first-run sample text
   - `src/components/` — `Stage`, `Controls`, `Progress`, `Context`, `TextPanel`
   - `src/App.svelte`, `src/app.css` (theme tokens from the prototype)
   - Tooling: Vite, Svelte 5, TS, Vitest, Prettier, svelte-check, `@fontsource/literata`, `@fontsource/ibm-plex-sans`, `@fontsource/ibm-plex-mono`
@@ -143,16 +147,34 @@ class Player {
   tokens: Token[];
   index: number;
   isPlaying: boolean;
+  finished: boolean; // stopped on the last token by playback
   settings: Settings;
-  load(text: string, restorePosition?: number): void;
-  play(): void;
+  readonly current: Token | undefined; // $derived
+  readonly remainingMinutes: number; // $derived
+  constructor(settings?: Settings);
+  load(text: string, restorePosition?: unknown): void; // clamps position
+  play(): void; // restarts from 0 when on the last token
   pause(): void;
   toggle(): void;
   stepWord(dir: -1 | 1): void;
   stepSentence(dir: -1 | 1): void;
-  jumpTo(i: number): void;
+  jumpTo(i: number): void; // keeps playing if playing; never resets to 0
+  setWpm(v: number): void; // rounds, clamps 100–1000
   changeSpeed(delta: number): void;
+  dispose(): void;
 }
+
+type Action =
+  | "toggle"
+  | "wordBack"
+  | "wordForward"
+  | "sentenceBack"
+  | "sentenceForward"
+  | "slower"
+  | "faster";
+// actionForKey ignores keys with Cmd/Ctrl/Alt, keys typed into text fields,
+// arrows on sliders, and Space on a focused button. Buttons drop focus after a
+// pointer click, so Space stays play/pause.
 ```
 
 ---
@@ -169,7 +191,7 @@ Concrete, testable steps, derived from R/E/A/S. Implement one at a time; each sh
 - [x] **O5**: `Stage.svelte` + `app.css` theme tokens: fixed-pivot grid, notches, hint, tap to toggle, long-word shrink — verify by: visual check at 360px and 1280px, pivot doesn't shift across short/long words, both themes
 - [x] **O6**: `Controls.svelte` (touch row, speed slider with −/+) and `Progress.svelte` (scrubber, count, time left); keyboard shortcuts calling the same actions — verify by: every shortcut has a working button; targets ≥ 44px at 360px
 - [x] **O7**: `Context.svelte` (paused sentence, click to jump) and `TextPanel.svelte` (paste, load, option toggles, shortcut list); wire persistence, pause on page hide — verify by: reload restores text/position/WPM/options; empty-text and end-of-text edge cases behave as in R
-- [ ] **O8**: `.github/workflows/deploy.yml` building and deploying to Pages — verify by: workflow runs green after the first push (needs a GitHub repo; user's call)
+- [x] **O8**: `.github/workflows/deploy.yml` building and deploying to Pages — verify by: workflow runs green after the first push (needs a GitHub repo; user's call)
 
 ---
 
@@ -189,9 +211,10 @@ Bound by [docs/SAFEGUARDS.md](../../SAFEGUARDS.md). Feature-specific additions:
 
 ## Change Log
 
-| Date       | Section | Change                                                                                                  | Reason                                                                                                                    |
-| ---------- | ------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-04 | R, A    | Added on-screen equivalents for all shortcuts                                                           | User request: phone use                                                                                                   |
-| 2026-10-04 | A       | Pivot counts Unicode code points, not UTF-16 units                                                      | Prototype could split an emoji or other astral character                                                                  |
-| 2026-10-04 | R, A, O | NFC-normalize text before tokenizing; new O2.1                                                          | Decomposed accents (some pasted text and EPUBs) were counted as separate non-letters and could be split from their letter |
-| 2026-10-04 | R, A    | Long-word shrink triggers when a side wouldn't fit, not at a fixed 20 chars; grid uses `minmax(0, 1fr)` | At 360px a 20-char limit lets words overflow, and overflow moves the pivot                                                |
+| Date       | Section | Change                                                                                                                                                                       | Reason                                                                                                                    |
+| ---------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-04 | R, A    | Added on-screen equivalents for all shortcuts                                                                                                                                | User request: phone use                                                                                                   |
+| 2026-10-04 | A       | Pivot counts Unicode code points, not UTF-16 units                                                                                                                           | Prototype could split an emoji or other astral character                                                                  |
+| 2026-10-04 | R, A, O | NFC-normalize text before tokenizing; new O2.1                                                                                                                               | Decomposed accents (some pasted text and EPUBs) were counted as separate non-letters and could be split from their letter |
+| 2026-10-04 | R, A    | Long-word shrink triggers when a side wouldn't fit, not at a fixed 20 chars; grid uses `minmax(0, 1fr)`                                                                      | At 360px a 20-char limit lets words overflow, and overflow moves the pivot                                                |
+| 2026-10-04 | S       | Synced with code after ship: added types/shortcuts/validate/sample-text files and full Player/Action interfaces; jumpTo never resets to 0; buttons blur after pointer clicks | Sync step of the feature loop                                                                                             |
