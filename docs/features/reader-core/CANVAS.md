@@ -109,6 +109,7 @@ One control row under the stage: `‹‹ sentence` `‹ word` **Play/Pause** `wo
 ### Alternatives Considered
 
 - Tap zones on the stage (left = back, right = forward): rejected for now. They're hidden and easy to trigger by accident; can be added later on top of the buttons.
+- Split long words (13+ letters) into hyphenated chunks shown in turn, as Spritz does: deferred (2026-10-04). On a 360px phone, shrinking takes a 20-letter word to ~13px and a 28-letter word to ~10px; the user chose to live with that for now. Revisit if long words are hard to read on the phone. Sketch if revisited: prefer existing hyphens, else even chunks of ≤ 10 letters; punctuation stays with the whole word; only the last chunk carries sentence/paragraph end; tokens gain `part`/`partCount` so word counts and the paused sentence show whole words; shrinking stays as the safety net.
 - Show touch controls only on touch devices: rejected. Detecting touch is unreliable and two layouts double the testing.
 
 ## S — Structure
@@ -165,8 +166,8 @@ Concrete, testable steps, derived from R/E/A/S. Implement one at a time; each sh
 - [x] **O2.1**: NFC-normalize text in `tokenize` (added after O2, see Change Log) — verify by: a decomposed `résumé` tokenizes to the composed word, and its pivot/split matches the composed one
 - [x] **O3**: `src/lib/storage/local.ts` safe get/set with `pivot:` prefix, plus restored-state validation (clamp position, WPM range) — verify by: tests with working storage and storage that throws
 - [x] **O4**: `Player` class in `player.svelte.ts` (load, play/pause/toggle, stepWord, stepSentence, jumpTo, changeSpeed, end-of-text and ease-in behaviour) — verify by: Vitest with fake timers
-- [ ] **O5**: `Stage.svelte` + `app.css` theme tokens: fixed-pivot grid, notches, hint, tap to toggle, long-word shrink — verify by: visual check at 360px and 1280px, pivot doesn't shift across short/long words, both themes
-- [ ] **O6**: `Controls.svelte` (touch row, speed slider with −/+) and `Progress.svelte` (scrubber, count, time left); keyboard shortcuts calling the same actions — verify by: every shortcut has a working button; targets ≥ 44px at 360px
+- [x] **O5**: `Stage.svelte` + `app.css` theme tokens: fixed-pivot grid, notches, hint, tap to toggle, long-word shrink — verify by: visual check at 360px and 1280px, pivot doesn't shift across short/long words, both themes
+- [x] **O6**: `Controls.svelte` (touch row, speed slider with −/+) and `Progress.svelte` (scrubber, count, time left); keyboard shortcuts calling the same actions — verify by: every shortcut has a working button; targets ≥ 44px at 360px
 - [ ] **O7**: `Context.svelte` (paused sentence, click to jump) and `TextPanel.svelte` (paste, load, option toggles, shortcut list); wire persistence, pause on page hide — verify by: reload restores text/position/WPM/options; empty-text and end-of-text edge cases behave as in R
 - [ ] **O8**: `.github/workflows/deploy.yml` building and deploying to Pages — verify by: workflow runs green after the first push (needs a GitHub repo; user's call)
 

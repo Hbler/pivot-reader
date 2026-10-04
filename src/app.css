@@ -1,1 +1,60 @@
-/* Global application styles */
+:root {
+  --bg: #e9ecef;
+  --surface: #f6f7f9;
+  --ink: #1a2029;
+  --muted: #687384;
+  --line: #cfd5dd;
+  --pivot: #c4174f;
+  --pivot-soft: rgba(196, 23, 79, 0.12);
+  --f-word: "Literata", Georgia, serif;
+  --f-ui: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
+  --f-num: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #11141a;
+    --surface: #181c24;
+    --ink: #e3e7ee;
+    --muted: #8b95a5;
+    --line: #2b313d;
+    --pivot: #ff5c8d;
+    --pivot-soft: rgba(255, 92, 141, 0.14);
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+body {
+  margin: 0;
+  font: 15px/1.5 var(--f-ui);
+  padding-inline: 16px;
+  padding-block: 24px 48px;
+}
+
+.wrap {
+  max-width: 760px;
+  margin: 0 auto;
+  display: grid;
+  gap: 20px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--pivot);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
