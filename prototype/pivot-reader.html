@@ -1,0 +1,347 @@
+<title>Pivot Reader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading instrument. A fixed stage with notches marking the fixation point, controls under it, source text folded below. */
+:root {
+  --bg: #e9ecef;
+  --surface: #f6f7f9;
+  --ink: #1a2029;
+  --muted: #687384;
+  --line: #cfd5dd;
+  --pivot: #c4174f;
+  --pivot-soft: rgba(196, 23, 79, .12);
+  --f-word: "Literata", Georgia, "Times New Roman", serif;
+  --f-ui: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
+  --f-num: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11141a; --surface: #181c24; --ink: #e3e7ee; --muted: #8b95a5;
+    --line: #2b313d; --pivot: #ff5c8d; --pivot-soft: rgba(255, 92, 141, .14);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11141a; --surface: #181c24; --ink: #e3e7ee; --muted: #8b95a5;
+  --line: #2b313d; --pivot: #ff5c8d; --pivot-soft: rgba(255, 92, 141, .14);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 15px/1.5 var(--f-ui);
+  padding-inline: 16px; padding-block: 24px 48px;
+}
+.wrap { max-width: 760px; margin: 0 auto; display: grid; gap: 20px; }
+
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 { font: 500 1.35rem/1.2 var(--f-word); margin: 0; letter-spacing: -.01em; }
+h1 span { color: var(--pivot); }
+.stats { font: 400 .8rem var(--f-num); color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Stage */
+.stage {
+  position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+  height: 200px; display: grid; align-items: center; overflow: hidden; cursor: pointer;
+  user-select: none; -webkit-user-select: none;
+}
+.stage::before, .stage::after {
+  content: ""; position: absolute; left: 50%; width: 2px; height: 22px; background: var(--ink); opacity: .55;
+  transform: translateX(-1px);
+}
+.stage::before { top: 34px; }
+.stage::after { bottom: 34px; }
+.rule { position: absolute; left: 0; right: 0; height: 1px; background: var(--line); }
+.rule.top { top: 34px; } .rule.bot { bottom: 34px; }
+.word {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: baseline;
+  font: 400 clamp(2rem, 7vw, 3.1rem)/1 var(--f-word); white-space: pre;
+}
+.word .l { justify-self: end; }
+.word .p { color: var(--pivot); font-weight: 500; }
+.word .r { justify-self: start; }
+.hint {
+  position: absolute; bottom: 8px; left: 0; right: 0; text-align: center;
+  font-size: .75rem; color: var(--muted);
+}
+
+/* Progress */
+.progress { display: grid; gap: 6px; }
+input[type=range] { width: 100%; accent-color: var(--pivot); }
+.progress-meta { display: flex; justify-content: space-between; font: .75rem var(--f-num); color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Controls */
+.controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+button {
+  font: 500 .875rem var(--f-ui); color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 4px; padding: 8px 14px; cursor: pointer;
+}
+button:hover { border-color: var(--muted); }
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--pivot); outline-offset: 2px; }
+button.primary { background: var(--ink); color: var(--surface); border-color: var(--ink); min-width: 92px; }
+.speed { display: flex; align-items: center; gap: 10px; flex: 1 1 260px; }
+.speed label { font-size: .8rem; color: var(--muted); white-space: nowrap; }
+.speed output { font: 500 .9rem var(--f-num); min-width: 72px; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Context */
+.context {
+  font: 400 1rem/1.7 var(--f-word); color: var(--muted); min-height: 3.4em; max-width: 65ch;
+}
+.context mark { background: var(--pivot-soft); color: var(--ink); border-radius: 2px; padding: 0 2px; }
+.context .w { cursor: pointer; }
+.context .w:hover { color: var(--ink); }
+
+/* Options + text */
+details { border-top: 1px solid var(--line); padding-top: 14px; }
+summary { cursor: pointer; font-weight: 600; font-size: .9rem; }
+.panel { display: grid; gap: 12px; margin-top: 12px; }
+.opts { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: .85rem; }
+.opts label { display: flex; align-items: center; gap: 6px; }
+textarea {
+  width: 100%; min-height: 220px; resize: vertical; padding: 12px;
+  font: .95rem/1.55 var(--f-word); color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 4px;
+}
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.file { font-size: .8rem; color: var(--muted); }
+.keys { font-size: .8rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 16px; }
+kbd { font: .75rem var(--f-num); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; padding: 0 5px; background: var(--surface); color: var(--ink); }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Pivot <span>R</span>eader</h1>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <div class="stage" id="stage" role="button" tabindex="0" aria-label="Play or pause">
+    <div class="rule top"></div><div class="rule bot"></div>
+    <div class="word" id="word" aria-live="off"><span class="l"></span><span class="p"></span><span class="r"></span></div>
+    <div class="hint" id="hint">Click or press space to start</div>
+  </div>
+
+  <div class="progress">
+    <input type="range" id="scrub" min="0" max="0" value="0" aria-label="Position in text">
+    <div class="progress-meta"><span id="pos"></span><span id="remain"></span></div>
+  </div>
+
+  <div class="controls">
+    <button id="back" title="Back one sentence (Shift+←)">⟲ Sentence</button>
+    <button class="primary" id="play">Play</button>
+    <div class="speed">
+      <label for="wpm">Speed</label>
+      <input type="range" id="wpm" min="100" max="1000" step="10" value="300">
+      <output id="wpmOut" for="wpm">300 wpm</output>
+    </div>
+  </div>
+
+  <div class="context" id="context"></div>
+
+  <details id="textPanel">
+    <summary>Text and settings</summary>
+    <div class="panel">
+      <textarea id="text" spellcheck="false" aria-label="Text to read"></textarea>
+      <div class="row">
+        <button id="load">Read this text</button>
+        <label class="file">or open a .txt file <input type="file" id="file" accept=".txt,.md,text/plain"></label>
+      </div>
+      <div class="opts">
+        <label><input type="checkbox" id="optPause" checked> Pause longer at punctuation</label>
+        <label><input type="checkbox" id="optLong" checked> Slow down for long words</label>
+        <label><input type="checkbox" id="optRamp" checked> Ease in after each pause</label>
+      </div>
+      <div class="keys">
+        <span><kbd>Space</kbd> play / pause</span>
+        <span><kbd>←</kbd><kbd>→</kbd> one word</span>
+        <span><kbd>Shift</kbd>+<kbd>←</kbd><kbd>→</kbd> one sentence</span>
+        <span><kbd>↑</kbd><kbd>↓</kbd> speed ±25</span>
+      </div>
+    </div>
+  </details>
+</div>
+
+<script>
+const SAMPLE = `This is a rapid serial visual presentation reader. Each word appears in the same spot, and one letter in it is coloured. That letter sits close to where your eye naturally lands when it recognises a word, slightly left of the middle. Because the coloured letter never moves, your eyes stay still and the text comes to you.
+
+Start slowly. Two hundred and fifty to three hundred words per minute feels close to normal reading for most people. Once that feels easy, raise the speed by twenty-five at a time. If you lose the thread, pause: the sentence you were in shows up below the reader, and you can click any word to jump back to it.
+
+Paste your own text in the panel below, or open a plain text file. Your text, position and speed stay in this browser, so you can close the page and pick up where you left off.`;
+
+const $ = id => document.getElementById(id);
+const els = {
+  stage: $('stage'), word: $('word'), hint: $('hint'), scrub: $('scrub'), pos: $('pos'), remain: $('remain'),
+  play: $('play'), back: $('back'), wpm: $('wpm'), wpmOut: $('wpmOut'), context: $('context'),
+  text: $('text'), load: $('load'), file: $('file'), stats: $('stats'),
+  optPause: $('optPause'), optLong: $('optLong'), optRamp: $('optRamp'),
+};
+const [elL, elP, elR] = els.word.children;
+
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem('pivot:' + k)); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem('pivot:' + k, JSON.stringify(v)); } catch {} },
+};
+
+let tokens = [];   // { w, paraEnd, sentEnd }
+let i = 0, playing = false, timer = null, rampLeft = 0;
+
+function tokenize(text) {
+  const out = [];
+  text.replace(/\r/g, '').split(/\n\s*\n/).forEach(para => {
+    const words = para.split(/\s+/).filter(Boolean);
+    words.forEach((w, k) => out.push({
+      w,
+      sentEnd: /[.!?…]["'”’)\]]*$/.test(w),
+      paraEnd: k === words.length - 1,
+    }));
+  });
+  return out;
+}
+
+// Optimal recognition point: slightly left of centre, by length of the letters only.
+function pivotIndex(w) {
+  const lead = (w.match(/^[^\p{L}\p{N}]*/u) || [''])[0].length;
+  const core = w.slice(lead).replace(/[^\p{L}\p{N}]+$/u, '');
+  const n = core.length;
+  if (n === 0) return Math.floor(w.length / 2);
+  const p = n <= 1 ? 0 : n <= 5 ? 1 : n <= 9 ? 2 : n <= 13 ? 3 : 4;
+  return lead + p;
+}
+
+function delayFor(t) {
+  let m = 1;
+  const core = t.w.replace(/[^\p{L}\p{N}]/gu, '');
+  if (els.optLong.checked) {
+    if (core.length > 8) m += 0.3;
+    if (core.length > 12) m += 0.3;
+  }
+  if (els.optPause.checked) {
+    if (t.paraEnd) m += 1.6;
+    else if (t.sentEnd) m += 1.1;
+    else if (/[,;:—–-]["'”’)]*$/.test(t.w)) m += 0.5;
+  }
+  if (els.optRamp.checked && rampLeft > 0) { m *= 1 + rampLeft * 0.25; rampLeft--; }
+  return (60000 / +els.wpm.value) * m;
+}
+
+function render() {
+  const t = tokens[i];
+  if (!t) { elL.textContent = ''; elP.textContent = ''; elR.textContent = ''; return; }
+  const p = pivotIndex(t.w);
+  const chars = [...t.w];
+  elL.textContent = chars.slice(0, p).join('');
+  elP.textContent = chars[p] || '';
+  elR.textContent = chars.slice(p + 1).join('');
+  els.scrub.value = i;
+  els.pos.textContent = `${i + 1} / ${tokens.length}`;
+  const left = Math.max(0, tokens.length - i - 1);
+  const mins = left / +els.wpm.value;
+  els.remain.textContent = `${Math.floor(mins)}:${String(Math.round((mins % 1) * 60)).padStart(2, '0')} left`;
+  if (!playing) renderContext();
+}
+
+function sentenceBounds(k) {
+  let s = k; while (s > 0 && !tokens[s - 1].sentEnd && !tokens[s - 1].paraEnd) s--;
+  let e = k; while (e < tokens.length - 1 && !tokens[e].sentEnd && !tokens[e].paraEnd) e++;
+  return [s, e];
+}
+
+function renderContext() {
+  if (!tokens.length) { els.context.textContent = ''; return; }
+  const [s, e] = sentenceBounds(i);
+  const from = Math.max(0, s), to = Math.min(tokens.length - 1, e);
+  els.context.innerHTML = '';
+  for (let k = from; k <= to; k++) {
+    const span = document.createElement(k === i ? 'mark' : 'span');
+    span.className = 'w'; span.textContent = tokens[k].w; span.dataset.k = k;
+    els.context.append(span, ' ');
+  }
+}
+
+function tick() {
+  render();
+  store.set('pos', i);
+  if (i >= tokens.length - 1) { pause(); els.hint.textContent = 'Finished. Press space to read again'; return; }
+  timer = setTimeout(() => { i++; tick(); }, delayFor(tokens[i]));
+}
+
+function play() {
+  if (!tokens.length) return;
+  if (i >= tokens.length - 1) i = 0;
+  playing = true; rampLeft = 4;
+  els.play.textContent = 'Pause'; els.hint.hidden = true; els.context.textContent = '';
+  tick();
+}
+function pause() {
+  playing = false; clearTimeout(timer);
+  els.play.textContent = 'Play'; els.hint.hidden = false; els.hint.textContent = 'Paused';
+  renderContext(); store.set('pos', i);
+}
+const toggle = () => playing ? pause() : play();
+
+function jump(k) {
+  const was = playing; if (was) pause();
+  i = Math.max(0, Math.min(tokens.length - 1, k));
+  render(); store.set('pos', i);
+  if (was) play();
+}
+function sentenceStep(dir) {
+  const [s] = sentenceBounds(i);
+  if (dir < 0) jump(i > s ? s : sentenceBounds(Math.max(0, s - 1))[0]);
+  else { const [, e] = sentenceBounds(i); jump(e + 1); }
+}
+
+function loadText(text, keepPos) {
+  pause();
+  tokens = tokenize(text);
+  els.scrub.max = Math.max(0, tokens.length - 1);
+  i = keepPos ? Math.min(store.get('pos') || 0, Math.max(0, tokens.length - 1)) : 0;
+  els.stats.textContent = `${tokens.length.toLocaleString()} words`;
+  els.hint.textContent = i ? 'Click or press space to resume' : 'Click or press space to start';
+  store.set('text', text); if (!keepPos) store.set('pos', 0);
+  render();
+}
+
+function setWpm(v) {
+  v = Math.max(100, Math.min(1000, v));
+  els.wpm.value = v; els.wpmOut.textContent = `${v} wpm`; store.set('wpm', v);
+  if (!playing) render();
+}
+
+els.stage.addEventListener('click', toggle);
+els.play.addEventListener('click', toggle);
+els.back.addEventListener('click', () => sentenceStep(-1));
+els.wpm.addEventListener('input', () => setWpm(+els.wpm.value));
+els.scrub.addEventListener('input', () => jump(+els.scrub.value));
+els.context.addEventListener('click', e => { const k = e.target.dataset?.k; if (k != null) jump(+k); });
+els.load.addEventListener('click', () => { loadText(els.text.value, false); els.stage.focus(); });
+els.file.addEventListener('change', () => {
+  const f = els.file.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => { els.text.value = r.result; loadText(r.result, false); };
+  r.readAsText(f);
+});
+['optPause', 'optLong', 'optRamp'].forEach(k => {
+  const saved = store.get(k); if (saved != null) els[k].checked = saved;
+  els[k].addEventListener('change', () => store.set(k, els[k].checked));
+});
+
+document.addEventListener('keydown', e => {
+  if (e.target.matches('textarea, input[type=file]')) return;
+  if (e.target.matches('input[type=range]') && e.key.startsWith('Arrow')) return;
+  if (e.key === ' ') { e.preventDefault(); toggle(); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); e.shiftKey ? sentenceStep(-1) : jump(i - 1); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); e.shiftKey ? sentenceStep(1) : jump(i + 1); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); setWpm(+els.wpm.value + 25); }
+  else if (e.key === 'ArrowDown') { e.preventDefault(); setWpm(+els.wpm.value - 25); }
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden && playing) pause(); });
+
+const savedText = store.get('text');
+setWpm(store.get('wpm') || 300);
+els.text.value = savedText || SAMPLE;
+loadText(els.text.value, !!savedText);
+</script>
