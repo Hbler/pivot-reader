@@ -34,17 +34,17 @@ Port the prototype (`prototype/pivot-reader.html`) to Vite + TypeScript + Svelte
 
 ### Edge Cases
 
-| Scenario                                           | Expected Behavior                                       |
-| -------------------------------------------------- | ------------------------------------------------------- |
-| Empty text loaded                                  | Stage shows a prompt to add text; play does nothing     |
-| Restored position beyond end of text               | Clamp to last word                                      |
-| Word with leading/trailing punctuation (`"Hello,`) | Pivot chosen from letters only; punctuation still shown |
-| Accented letters stored decomposed (`e` + combining `◌́`) | Normalized to composed form first; the accent stays on its letter and is never split from it |
-| Word too wide for the stage on either side of the pivot (at 360px, roughly 10+ letters after the pivot) | Shown whole at a smaller size so both sides fit; pivot stays fixed |
-| Playback reaches the end                           | Pause on last word; play restarts from the beginning    |
-| Page hidden while playing                          | Pause and save position                                 |
-| Storage unavailable                                | App works; nothing persists                             |
-| Key pressed while typing in the text panel         | Ignored by shortcuts                                    |
+| Scenario                                                                                                | Expected Behavior                                                                            |
+| ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Empty text loaded                                                                                       | Stage shows a prompt to add text; play does nothing                                          |
+| Restored position beyond end of text                                                                    | Clamp to last word                                                                           |
+| Word with leading/trailing punctuation (`"Hello,`)                                                      | Pivot chosen from letters only; punctuation still shown                                      |
+| Accented letters stored decomposed (`e` + combining `◌́`)                                                | Normalized to composed form first; the accent stays on its letter and is never split from it |
+| Word too wide for the stage on either side of the pivot (at 360px, roughly 10+ letters after the pivot) | Shown whole at a smaller size so both sides fit; pivot stays fixed                           |
+| Playback reaches the end                                                                                | Pause on last word; play restarts from the beginning                                         |
+| Page hidden while playing                                                                               | Pause and save position                                                                      |
+| Storage unavailable                                                                                     | App works; nothing persists                                                                  |
+| Key pressed while typing in the text panel                                                              | Ignored by shortcuts                                                                         |
 
 ### Out of Scope
 
@@ -168,7 +168,7 @@ Concrete, testable steps, derived from R/E/A/S. Implement one at a time; each sh
 - [x] **O4**: `Player` class in `player.svelte.ts` (load, play/pause/toggle, stepWord, stepSentence, jumpTo, changeSpeed, end-of-text and ease-in behaviour) — verify by: Vitest with fake timers
 - [x] **O5**: `Stage.svelte` + `app.css` theme tokens: fixed-pivot grid, notches, hint, tap to toggle, long-word shrink — verify by: visual check at 360px and 1280px, pivot doesn't shift across short/long words, both themes
 - [x] **O6**: `Controls.svelte` (touch row, speed slider with −/+) and `Progress.svelte` (scrubber, count, time left); keyboard shortcuts calling the same actions — verify by: every shortcut has a working button; targets ≥ 44px at 360px
-- [ ] **O7**: `Context.svelte` (paused sentence, click to jump) and `TextPanel.svelte` (paste, load, option toggles, shortcut list); wire persistence, pause on page hide — verify by: reload restores text/position/WPM/options; empty-text and end-of-text edge cases behave as in R
+- [x] **O7**: `Context.svelte` (paused sentence, click to jump) and `TextPanel.svelte` (paste, load, option toggles, shortcut list); wire persistence, pause on page hide — verify by: reload restores text/position/WPM/options; empty-text and end-of-text edge cases behave as in R
 - [ ] **O8**: `.github/workflows/deploy.yml` building and deploying to Pages — verify by: workflow runs green after the first push (needs a GitHub repo; user's call)
 
 ---
@@ -189,9 +189,9 @@ Bound by [docs/SAFEGUARDS.md](../../SAFEGUARDS.md). Feature-specific additions:
 
 ## Change Log
 
-| Date       | Section | Change                                        | Reason                  |
-| ---------- | ------- | --------------------------------------------- | ----------------------- |
-| 2026-10-04 | R, A    | Added on-screen equivalents for all shortcuts | User request: phone use |
-| 2026-10-04 | A       | Pivot counts Unicode code points, not UTF-16 units | Prototype could split an emoji or other astral character |
-| 2026-10-04 | R, A, O | NFC-normalize text before tokenizing; new O2.1 | Decomposed accents (some pasted text and EPUBs) were counted as separate non-letters and could be split from their letter |
-| 2026-10-04 | R, A    | Long-word shrink triggers when a side wouldn't fit, not at a fixed 20 chars; grid uses `minmax(0, 1fr)` | At 360px a 20-char limit lets words overflow, and overflow moves the pivot |
+| Date       | Section | Change                                                                                                  | Reason                                                                                                                    |
+| ---------- | ------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-04 | R, A    | Added on-screen equivalents for all shortcuts                                                           | User request: phone use                                                                                                   |
+| 2026-10-04 | A       | Pivot counts Unicode code points, not UTF-16 units                                                      | Prototype could split an emoji or other astral character                                                                  |
+| 2026-10-04 | R, A, O | NFC-normalize text before tokenizing; new O2.1                                                          | Decomposed accents (some pasted text and EPUBs) were counted as separate non-letters and could be split from their letter |
+| 2026-10-04 | R, A    | Long-word shrink triggers when a side wouldn't fit, not at a fixed 20 chars; grid uses `minmax(0, 1fr)` | At 360px a 20-char limit lets words overflow, and overflow moves the pivot                                                |
