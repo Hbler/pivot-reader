@@ -15,13 +15,14 @@ export function loadValue<T>(key: string): T | null {
   }
 }
 
-export function saveValue(key: string, value: unknown): void {
+export function saveValue(key: string, value: unknown): boolean {
   try {
     if (typeof localStorage === "undefined") {
-      return;
+      return false;
     }
     localStorage.setItem(PREFIX + key, JSON.stringify(value));
+    return true;
   } catch {
-    // Silently ignore storage failures (quota exceeded, security restrictions, etc.)
+    return false;
   }
 }

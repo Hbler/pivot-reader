@@ -21,7 +21,7 @@ Open a `.txt`, Markdown, EPUB or PDF file from the device and read it in Pivot R
 - [ ] "Open file…" in the text panel accepts `.txt`, `.md`/`.markdown`, `.epub` and `.pdf`, on desktop and phone
 - [ ] On desktop, dropping a file onto the text panel opens it too
 - [ ] `.txt`: UTF-8 (with or without BOM) and UTF-16 with BOM read correctly; text that isn't valid UTF-8 is read as Windows-1252
-- [ ] Markdown: formatting symbols removed (headings, emphasis, lists, quotes, links keep their text, images dropped, tables read row by row, code kept as text); YAML front matter removed; Obsidian syntax handled: `[[Note|alias]]` → alias, `[[Note#Heading]]` → Note, `![[embed]]` and `%%comments%%` removed, `==highlight==` → its text, callout markers `> [!type] Title` → Title
+- [ ] Markdown: formatting symbols removed (headings, emphasis, lists, quotes, links keep their text, images dropped, tables read row by row, code kept as text); YAML front matter removed; Obsidian syntax handled: `[[Note|alias]]` → alias, `[[Note#Heading]]` → Note, `![[embed]]` and `%%comments%%` removed, `==highlight==` → its text, callout markers `> [!type] Title` → Title as its own paragraph
 - [ ] EPUB: chapters in reading order (spine), paragraph breaks kept, images/styles/scripts ignored, items marked `linear="no"` skipped
 - [ ] PDF: text from every page in order; paragraph breaks kept; a word hyphenated across a line end is joined; lines that are only a page number are dropped
 - [ ] Imported text starts at the first word; the document title is shown in the header and remembered across reloads
@@ -109,7 +109,7 @@ All parsing runs in the browser; nothing is uploaded or fetched (Safeguard: text
 
 1. Decode bytes as for TXT.
 2. Front matter: if the file starts with a `---` line, everything up to the next `---` line is removed; a `title:` key in it becomes the title.
-3. Obsidian pass (pure string function, before parsing): remove `%%…%%` comments (also multi-line) and `![[…]]` embeds; `[[Note|alias]]` → `alias`, `[[Note#Heading]]` and `[[Note]]` → `Note`; `==text==` → `text`; a callout first line `> [!type] Title` → `> Title` (or removed when there's no title).
+3. Obsidian pass (pure string function, before parsing; text inside fenced code blocks is left as written): remove `%%…%%` comments (also multi-line) and `![[…]]` embeds; `[[Note|alias]]` → `alias`, `[[Note#Heading]]` and `[[Note]]` → `Note`; `==text==` → `text`; a callout first line `> [!type] Title` → `> Title` followed by a `>` line, so the title is its own paragraph (the line is removed when there's no title).
 4. Convert with `marked` to HTML, then to text with the same `htmlToText` used for EPUB chapters (images dropped; table rows as lines, cells separated by spaces; code blocks kept as text).
 5. Title fallback: front-matter `title`, else the file name. (Not the first heading: many notes start with one that repeats the file name, but some don't have any.)
 
@@ -124,8 +124,8 @@ All parsing runs in the browser; nothing is uploaded or fetched (Safeguard: text
 ### PDF (pdf.js, worker bundled locally)
 
 1. Load with the worker file served from our own build; no `cMapUrl` or `standardFontDataUrl` pointing anywhere remote; font loading disabled (text only).
-2. Per page: `getTextContent()`; build lines from items (new line on `hasEOL` or a change in baseline), then paragraphs: a vertical gap larger than 1.5× the median line spacing starts a new paragraph.
-3. Clean-up rules, as pure functions with tests: join `word-` + line break + lowercase continuation into one word; drop a line that is only a number (optionally with dashes) at the top or bottom of a page.
+2. Per page: `getTextContent()`; build lines from items with the pure `itemsToLines` (new line on `hasEOL` or a change in baseline; a space is inserted between items on one line when there's a visible gap and neither side has one), then paragraphs: a vertical gap larger than 1.5× the line spacing starts a new paragraph. Line spacing = the smallest gap between consecutive lines that is at least half the median line height (so superscripts and overlaps don't count); with no such gap, 1.2× the median line height.
+3. Clean-up rules, as pure functions with tests: join `word-` + line break + lowercase continuation into one word; drop a line that is only a number (optionally with dashes, or "Page 3 of 10") at the top or bottom of a page; a paragraph that runs over a page break (no closing punctuation, next page starts lowercase) stays one paragraph.
 4. Title: PDF metadata `Title` if present and not empty, else file name.
 5. No text on any page → "no text" error. Password → "password" error.
 6. Progress per page; extraction awaits each page, so the page stays responsive.
@@ -157,7 +157,8 @@ In the text panel, next to "Read this text": an "Open file…" button (a visuall
   - `src/lib/import/html.ts` — pure `htmlToText(doc: Document): string`, shared by EPUB and Markdown
   - `src/lib/import/markdown.ts` — `importMarkdown(bytes, fileName)`, plus pure `stripFrontMatter(md)`, `preprocessObsidian(md)`
   - `src/lib/import/epub.ts` — `importEpub(bytes, onProgress, signal)`, plus pure `parseOpf(xml)`, `isDrmProtected(encryptionXml)`
-  - `src/lib/import/pdf.ts` — `importPdf(bytes, onProgress, signal)`, plus pure `linesToParagraphs(lines)`, `joinHyphenation(text)`, `dropPageNumbers(lines)`
+  - `src/lib/import/pdf-text.ts` — pure `PdfLine` logic: `itemsToLines(items, pageHeight)`, `dropPageNumbers(lines)`, `linesToParagraphs(lines)`, `joinHyphenation(text)`, `pagesToText(pages)` (no pdf.js import, so it's tested in plain Node)
+  - `src/lib/import/pdf.ts` — `importPdf(bytes, fileName, onProgress, signal)`: pdf.js loading, metadata, per-page text items, errors
   - Tests next to each: EPUBs built in the test with JSZip; DOM-based tests run in the `happy-dom` test environment; PDF clean-up tested on synthetic text items (no PDF fixtures in the repo)
   - Dependencies: `jszip`, `marked`, `pdfjs-dist`; dev: `happy-dom` (worker referenced through Vite's `?url` import so it's emitted as a local asset)
 - **Changes**:
@@ -194,13 +195,13 @@ function saveValue(key: string, value: unknown): boolean; // was void
 
 Concrete, testable steps, derived from R/E/A/S. Implement one at a time; code is written by agy and reviewed before ticking.
 
-- [ ] **O1**: `saveValue` returns `boolean` (true on success, false on any failure); existing callers unchanged — verify by: storage tests assert true/false for working, throwing and quota-exceeded storage
-- [ ] **O2**: `src/lib/import/types.ts` and `html.ts` (`htmlToText`); add `happy-dom` for DOM tests — verify by: tests for each block element, nested blocks, `br`, removed elements (`script`, `style`, `nav`, `img`), table rows, `pre` kept, whitespace collapsed inside blocks
-- [ ] **O3**: `txt.ts` (`decodeText`) — verify by: tests for UTF-8 with/without BOM, UTF-16 LE/BE with BOM, invalid UTF-8 falling back to Windows-1252 (`café` in 1252 bytes)
-- [ ] **O4**: `markdown.ts` (`stripFrontMatter`, `preprocessObsidian`, `importMarkdown` via `marked` + `htmlToText`) — verify by: tests for every Markdown and Obsidian rule in R, front-matter title, title fallback to file name, raw `<script>` dropped, only-front-matter file → no-text error
-- [ ] **O5**: `epub.ts` (`parseOpf`, `isDrmProtected`, `importEpub` with progress, yielding and abort) — verify by: tests on EPUBs built with JSZip: spine order, `linear="no"` skipped, title, font-only encryption allowed, DRM error, missing container → damaged error, abort stops early
-- [ ] **O6**: `pdf.ts` pure clean-up (`linesToParagraphs`, `joinHyphenation`, `dropPageNumbers`) — verify by: tests on synthetic lines: paragraph gaps, hyphen joins only before lowercase, page-number lines dropped only at page top/bottom
-- [ ] **O7**: `importPdf` with pdf.js (local worker via `?url`, no remote CMaps/fonts, progress, abort, password/no-text/damaged errors) — verify by: browser check with generated PDFs (one plain, one 500 pages) and the network log showing no requests outside the app
+- [x] **O1**: `saveValue` returns `boolean` (true on success, false on any failure); existing callers unchanged — verify by: storage tests assert true/false for working, throwing and quota-exceeded storage
+- [x] **O2**: `src/lib/import/types.ts` and `html.ts` (`htmlToText`); add `happy-dom` for DOM tests — verify by: tests for each block element, nested blocks, `br`, removed elements (`script`, `style`, `nav`, `img`), table rows, `pre` kept, whitespace collapsed inside blocks
+- [x] **O3**: `txt.ts` (`decodeText`) — verify by: tests for UTF-8 with/without BOM, UTF-16 LE/BE with BOM, invalid UTF-8 falling back to Windows-1252 (`café` in 1252 bytes)
+- [x] **O4**: `markdown.ts` (`stripFrontMatter`, `preprocessObsidian`, `importMarkdown` via `marked` + `htmlToText`) — verify by: tests for every Markdown and Obsidian rule in R, front-matter title, title fallback to file name, raw `<script>` dropped, only-front-matter file → no-text error
+- [x] **O5**: `epub.ts` (`parseOpf`, `isDrmProtected`, `importEpub` with progress, yielding and abort) — verify by: tests on EPUBs built with JSZip: spine order, `linear="no"` skipped, title, font-only encryption allowed, DRM error, missing container → damaged error, abort stops early
+- [x] **O6**: `pdf.ts` pure clean-up (`linesToParagraphs`, `joinHyphenation`, `dropPageNumbers`) — verify by: tests on synthetic lines: paragraph gaps, hyphen joins only before lowercase, page-number lines dropped only at page top/bottom
+- [x] **O7**: `importPdf` with pdf.js (local worker via `?url`, no remote CMaps/fonts, progress, abort, password/no-text/damaged errors) — verify by: browser check with generated PDFs (one plain, one 500 pages) and the network log showing no requests outside the app
 - [ ] **O8**: `index.ts` `importFile` dispatch (extension, then magic bytes; unsupported error; dynamic imports) — verify by: tests for each extension, magic-byte fallback, unknown file → unsupported; build output shows separate chunks for jszip, marked and pdf.js
 - [ ] **O9**: UI: "Open file…" and drop target in TextPanel, status line (progress, errors, storage note), cancel previous import on a new file, shared load path with title in App, title in header — verify by: browser check opening a `.txt`, `.md` (Obsidian sample), EPUB and PDF; reload keeps title and position; error messages for unsupported/DRM/scanned files; app shell still < 100 KB gzipped
 
@@ -225,6 +226,10 @@ Bound by [docs/SAFEGUARDS.md](../../SAFEGUARDS.md). Feature-specific additions:
 
 ## Change Log
 
-| Date       | Section    | Change                                                                                                                                   | Reason                         |
-| ---------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| 2026-10-04 | R, E, A, S | Markdown (`.md`/`.markdown`) added, with front matter and Obsidian syntax handling; EPUB text conversion becomes the shared `htmlToText` | User request at R/E/A/S review |
+| Date       | Section    | Change                                                                                                                                   | Reason                                                                                                                                   |
+| ---------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-04 | R, E, A, S | Markdown (`.md`/`.markdown`) added, with front matter and Obsidian syntax handling; EPUB text conversion becomes the shared `htmlToText` | User request at R/E/A/S review                                                                                                           |
+| 2026-10-04 | A, S       | PDF clean-up split into pure `pdf-text.ts` (+ `pagesToText`, paragraphs joined across page breaks); Obsidian pass skips fenced code      | Found while specifying O4/O6: keeps pure rules testable without pdf.js, and avoids changing code samples                                 |
+| 2026-10-04 | R, A       | Callout title becomes its own paragraph                                                                                                  | Trying O4 on a real note: the title ran into the body as one sentence with no pause ("Keep the eyes still The pivot…")                   |
+| 2026-10-04 | A, S       | Text items → lines moves into pure `itemsToLines` in `pdf-text.ts`                                                                       | Specifying O7: line building and space insertion are pure logic worth unit tests without pdf.js                                          |
+| 2026-10-04 | A          | Line spacing for paragraph detection = smallest normal gap, not the median gap                                                           | O7 browser check: a 3-line page with one paragraph break had gaps [2L, L]; their median (1.5L) hid the break. Long pages were unaffected |

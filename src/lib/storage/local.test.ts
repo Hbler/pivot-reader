@@ -42,14 +42,16 @@ describe("storage/local", () => {
     });
 
     it("saves values with pivot: prefix and loads them decoded", () => {
-      saveValue("wpm", 450);
+      const saved = saveValue("wpm", 450);
+      expect(saved).toBe(true);
       expect(store["pivot:wpm"]).toBe("450");
       expect(loadValue<number>("wpm")).toBe(450);
     });
 
     it("saves and loads complex objects", () => {
       const data = { wpm: 350, easeIn: false };
-      saveValue("settings", data);
+      const saved = saveValue("settings", data);
+      expect(saved).toBe(true);
       expect(loadValue<typeof data>("settings")).toEqual(data);
     });
 
@@ -95,10 +97,30 @@ describe("storage/local", () => {
       }).not.toThrow();
     });
 
-    it("silently ignores errors when saveValue encounters a storage error", () => {
-      expect(() => {
-        saveValue("anyKey", "value");
-      }).not.toThrow();
+    it("returns false and does not throw when saveValue encounters a storage error", () => {
+      expect(saveValue("anyKey", "value")).toBe(false);
+    });
+
+    it("returns false when setItem throws a DOMException named QuotaExceededError", () => {
+      const quotaStorage = {
+        getItem: () => null,
+        setItem: () => {
+          throw new DOMException(
+            "The quota has been exceeded",
+            "QuotaExceededError",
+          );
+        },
+        removeItem: () => {},
+        clear: () => {},
+        length: 0,
+        key: () => null,
+      };
+      Object.defineProperty(globalThis, "localStorage", {
+        value: quotaStorage,
+        writable: true,
+        configurable: true,
+      });
+      expect(saveValue("anyKey", "value")).toBe(false);
     });
   });
 
@@ -115,8 +137,8 @@ describe("storage/local", () => {
       expect(loadValue("key")).toBeNull();
     });
 
-    it("does nothing in saveValue when localStorage is undefined", () => {
-      expect(() => saveValue("key", "val")).not.toThrow();
+    it("returns false from saveValue when localStorage is undefined", () => {
+      expect(saveValue("key", "val")).toBe(false);
     });
   });
 });
