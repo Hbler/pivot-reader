@@ -15,18 +15,34 @@
   } from "./lib/reader/shortcuts.ts";
 
   const storedText = loadValue<unknown>("text");
+  const storedTitle = loadValue<unknown>("title");
   const initialText = typeof storedText === "string" ? storedText : SAMPLE_TEXT;
+  const initialTitle =
+    typeof storedTitle === "string" && storedTitle.length > 0
+      ? storedTitle
+      : typeof storedText === "string"
+        ? "Pasted text"
+        : "Sample text";
   let text = $state(initialText);
+  let title = $state(initialTitle);
   const settings = sanitizeSettings(loadValue("settings"));
 
   const player = new Player(settings);
   player.load(initialText, loadValue("position"));
 
-  function handleLoad(newText: string) {
+  function loadDocument(newText: string, newTitle: string): boolean {
     text = newText;
+    title = newTitle;
     player.load(newText, 0);
-    saveValue("text", newText);
+    const saved = saveValue("text", newText);
+    if (saved) {
+      saveValue("title", newTitle);
+    } else {
+      saveValue("text", null);
+      saveValue("title", null);
+    }
     saveValue("position", 0);
+    return saved;
   }
 
   $effect(() => {
@@ -99,17 +115,28 @@
 <div class="wrap">
   <header>
     <h1>Pivot <span>R</span>eader</h1>
-    <div class="stats">{player.tokens.length.toLocaleString()} words</div>
+    <div class="stats">
+      <span class="title" {title}>{title}</span>
+      <span class="count">
+        · {player.tokens.length.toLocaleString()} words</span
+      >
+    </div>
   </header>
   <Stage {player} />
   <Progress {player} />
   <Controls {player} />
   <Context {player} />
-  <TextPanel {player} {text} onLoad={handleLoad} />
+  <TextPanel
+    {player}
+    {text}
+    onLoad={(t) => loadDocument(t, "Pasted text")}
+    onImport={(doc) => loadDocument(doc.text, doc.title)}
+  />
 </div>
 
 <style>
   header {
+    min-width: 0;
     display: flex;
     align-items: baseline;
     justify-content: space-between;
@@ -128,8 +155,24 @@
   }
 
   .stats {
+    display: flex;
+    align-items: baseline;
+    min-width: 0;
+    max-width: 100%;
     font: 400 0.8rem var(--f-num);
     color: var(--muted);
     font-variant-numeric: tabular-nums;
+  }
+
+  .title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  .count {
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 </style>

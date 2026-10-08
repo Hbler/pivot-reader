@@ -1,6 +1,6 @@
 # REASONS Canvas: Reader Core
 
-**Status**: shipped (2026-10-04) — https://hbler.github.io/pivot-reader/
+**Status**: shipped (2026-10-04) — https://hbler.github.io/pivot-reader/ · follow-up O9 shipped locally (2026-10-05)
 **Last synced with code**: 2026-10-04, commit after 080c9e2
 
 ---
@@ -104,7 +104,7 @@ Port behaviour exactly from the prototype, restructured into pure logic + Player
 
 ### Touch controls
 
-One control row under the stage: `‹‹ sentence` `‹ word` **Play/Pause** `word ›` `sentence ››`, plus `−` / `+` beside the speed slider. Always visible on every device, so there is one layout and the keyboard is just a shortcut. The keyboard-shortcut list stays in the text panel.
+One control row under the stage: `‹‹ sentence` `‹ word` **Play/Pause** `word ›` `sentence ››`, plus `−` / `+` beside the speed slider. The speed block mirrors the progress bar: one row with `−` slider `+`, and under it a line with the "Speed" label on the left and the value ("300 wpm") on the right, in the same small mono style as the progress line. Always visible on every device, so there is one layout and the keyboard is just a shortcut. The keyboard-shortcut list stays in the text panel.
 
 ### Alternatives Considered
 
@@ -192,6 +192,7 @@ Concrete, testable steps, derived from R/E/A/S. Implement one at a time; each sh
 - [x] **O6**: `Controls.svelte` (touch row, speed slider with −/+) and `Progress.svelte` (scrubber, count, time left); keyboard shortcuts calling the same actions — verify by: every shortcut has a working button; targets ≥ 44px at 360px
 - [x] **O7**: `Context.svelte` (paused sentence, click to jump) and `TextPanel.svelte` (paste, load, option toggles, shortcut list); wire persistence, pause on page hide — verify by: reload restores text/position/WPM/options; empty-text and end-of-text edge cases behave as in R
 - [x] **O8**: `.github/workflows/deploy.yml` building and deploying to Pages — verify by: workflow runs green after the first push (needs a GitHub repo; user's call)
+- [x] **O9**: Speed block layout: `−` slider `+` on one row; "Speed" and the wpm value on a line below (label left, value right), styled like the progress meta line — verify by: at 360px the speed row doesn't wrap, the label/value line sits under it, and nothing scrolls sideways; same layout on desktop
 
 ---
 
@@ -218,3 +219,4 @@ Bound by [docs/SAFEGUARDS.md](../../SAFEGUARDS.md). Feature-specific additions:
 | 2026-10-04 | R, A, O | NFC-normalize text before tokenizing; new O2.1                                                                                                                               | Decomposed accents (some pasted text and EPUBs) were counted as separate non-letters and could be split from their letter |
 | 2026-10-04 | R, A    | Long-word shrink triggers when a side wouldn't fit, not at a fixed 20 chars; grid uses `minmax(0, 1fr)`                                                                      | At 360px a 20-char limit lets words overflow, and overflow moves the pivot                                                |
 | 2026-10-04 | S       | Synced with code after ship: added types/shortcuts/validate/sample-text files and full Player/Action interfaces; jumpTo never resets to 0; buttons blur after pointer clicks | Sync step of the feature loop                                                                                             |
+| 2026-10-05 | A, O    | Speed label and value move below the speed slider; new O9                                                                                                                    | User on mobile: the "Speed" label made the slider sit misaligned with the progress bar                                    |

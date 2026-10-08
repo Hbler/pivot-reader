@@ -10,14 +10,14 @@ Pivot Reader uses rapid serial visual presentation (RSVP). Each word is shown in
 
 It exists because apps like Readmaxx keep the useful part behind a very limited free tier, while the technique itself is simple. Everything runs in the browser and texts never leave the device.
 
-Today it reads pasted text and remembers one document with its position, speed and options. Importing `.txt`, EPUB and PDF files and a library of documents are next on the roadmap; Chinese support is planned later.
+It reads pasted text and opens `.txt`, Markdown (including Obsidian notes), EPUB and PDF files from your device, and remembers the current document with its title, position, speed and options. A library of documents is next on the roadmap; Chinese support is planned later.
 
 ## Tech Stack
 
 - **Language**: TypeScript
 - **Framework**: Svelte 5, built with Vite
 - **Storage**: `localStorage` (settings), IndexedDB (library, once it exists)
-- **Key Dependencies**: pdf.js and JSZip (loaded only when importing those files), vite-plugin-pwa (offline)
+- **Key Dependencies**: marked, JSZip and pdf.js (each loaded only when importing that file type); vite-plugin-pwa planned for offline
 - **Hosting**: GitHub Pages, deployed by GitHub Actions on push to `main`
 
 ## Getting Started
@@ -52,7 +52,7 @@ prototype/
 Each item gets its own canvas in `docs/features/`.
 
 1. **Reader core** (shipped): the prototype, ported to Svelte, with touch controls
-2. **File import**: `.txt`, EPUB, PDF
+2. **File import** (done): `.txt`, Markdown, EPUB, PDF
 3. **Library**: multiple saved documents, each with its own position
 4. **Offline**: installable PWA
 5. **Chinese**: word segmentation and a pivot rule for Hanzi

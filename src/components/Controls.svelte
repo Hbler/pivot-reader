@@ -63,45 +63,47 @@
     </button>
   </div>
 
-  <div class="speed-row">
-    <label for="wpm">Speed</label>
-    <button
-      type="button"
-      class="icon-btn"
-      aria-label="Slower"
-      title="Slower (↓)"
-      onclick={(e) => press(e, "slower")}
-    >
-      −
-    </button>
-    <input
-      type="range"
-      id="wpm"
-      min="100"
-      max="1000"
-      step="10"
-      value={player.settings.wpm}
-      oninput={(e) => player.setWpm(Number(e.currentTarget.value))}
-    />
-    <button
-      type="button"
-      class="icon-btn"
-      aria-label="Faster"
-      title="Faster (↑)"
-      onclick={(e) => press(e, "faster")}
-    >
-      +
-    </button>
-    <output for="wpm">{player.settings.wpm} wpm</output>
+  <div class="speed">
+    <div class="speed-row">
+      <button
+        type="button"
+        class="icon-btn"
+        aria-label="Slower"
+        title="Slower (↓)"
+        onclick={(e) => press(e, "slower")}
+      >
+        −
+      </button>
+      <input
+        type="range"
+        id="wpm"
+        min="100"
+        max="1000"
+        step="10"
+        value={player.settings.wpm}
+        oninput={(e) => player.setWpm(Number(e.currentTarget.value))}
+      />
+      <button
+        type="button"
+        class="icon-btn"
+        aria-label="Faster"
+        title="Faster (↑)"
+        onclick={(e) => press(e, "faster")}
+      >
+        +
+      </button>
+    </div>
+    <div class="speed-meta">
+      <label for="wpm">Speed</label>
+      <output for="wpm">{player.settings.wpm} wpm</output>
+    </div>
   </div>
 </div>
 
 <style>
   .controls {
-    display: flex;
+    display: grid;
     gap: 12px;
-    flex-wrap: wrap;
-    align-items: center;
   }
 
   .nav-row {
@@ -111,12 +113,25 @@
     flex-wrap: wrap;
   }
 
+  .speed {
+    display: grid;
+    gap: 6px;
+    width: 100%;
+  }
+
   .speed-row {
     display: flex;
     align-items: center;
     gap: 8px;
-    flex: 1 1 260px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+  }
+
+  .speed-meta {
+    display: flex;
+    justify-content: space-between;
+    font: 0.75rem var(--f-num);
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
   }
 
   button {
@@ -156,26 +171,13 @@
     font-size: 1.15rem;
     line-height: 1;
     padding: 0;
-  }
-
-  label {
-    font-size: 0.8rem;
-    color: var(--muted);
-    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   input[type="range"] {
-    flex: 1 1 60px;
-    min-width: 50px;
+    flex: 1;
+    min-width: 0;
     accent-color: var(--pivot);
     cursor: pointer;
-  }
-
-  output {
-    font: 500 0.9rem var(--f-num);
-    min-width: 72px;
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-    color: var(--ink);
   }
 </style>

@@ -33,6 +33,12 @@ Everything runs in the browser. There is no server.
 - **Purpose**: show the current word and expose every control by keyboard and by button.
 - **Dependencies**: Player.
 
+### Importers (`src/lib/import/`)
+
+- **Purpose**: turn a local file into plain text and a title.
+- **Responsibilities**: `importFile` picks the importer; txt, Markdown (marked), EPUB (JSZip) and PDF (pdf.js, worker bundled locally) each load only when needed. Shared `htmlToText` for EPUB and Markdown; pure PDF line/paragraph rules in `pdf-text.ts`.
+- **Dependencies**: none at app start; each importer's library is a separate chunk.
+
 ### Storage (`src/lib/storage/`)
 
 - **Purpose**: remember settings and reading position.
@@ -40,7 +46,8 @@ Everything runs in the browser. There is no server.
 
 ## Domain Model
 
-- **Document**: a source text (pasted or imported). Until the Library feature, there is exactly one.
+- **Document**: a source text with a title (pasted text is "Pasted text"; imported files use their own title). Until the Library feature, there is exactly one.
+- **ImportedDocument**: `{ title, text, source }` produced by an importer from a `.txt`, Markdown, EPUB or PDF file (see `docs/features/file-import/CANVAS.md`).
 - **Token**: `{ text, sentenceEnd, paragraphEnd }`, produced from a Document.
 - **Position**: index of the current Token in a Document.
 - **Settings**: WPM (100–1000), punctuation pauses, long-word slowdown, ease-in.

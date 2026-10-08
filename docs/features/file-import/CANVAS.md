@@ -1,7 +1,7 @@
 # REASONS Canvas: File Import
 
-**Status**: approved (R/E/A/S 2026-10-04, Markdown added at review)
-**Last synced with code**: — (no code yet)
+**Status**: done locally (2026-10-07); ships with the next deploy
+**Last synced with code**: 2026-10-07
 
 ---
 
@@ -99,7 +99,7 @@ All parsing runs in the browser; nothing is uploaded or fetched (Safeguard: text
 
 ### Dispatch
 
-`importFile(file, onProgress, signal)` picks the importer by extension, (`.md`/`.markdown` → Markdown), falling back to magic bytes (`PK` → EPUB, `%PDF` → PDF). Each importer is a dynamic `import()` so its library loads only when needed.
+`importFile(file, onProgress, signal)` picks the importer by extension, (`.md`/`.markdown` → Markdown). Only a file with no extension at all (some phone downloads) falls back to magic bytes (`PK\x03\x04` → EPUB, `%PDF` → PDF); any other extension is unsupported. (`.docx`, `.odt` and `.zip` are ZIP files too, so sniffing them would misreport them as damaged EPUBs.) Each importer is a dynamic `import()` so its library loads only when needed.
 
 ### TXT
 
@@ -132,7 +132,7 @@ All parsing runs in the browser; nothing is uploaded or fetched (Safeguard: text
 
 ### Loading into the reader
 
-The panel calls the same load path as "Read this text", plus title: pause, `player.load(text, 0)`, save `text`, `title` and `position`. `saveValue` returns whether the write succeeded; if saving `text` failed, show the "too large to remember" note. The textarea is filled with the imported text.
+The panel calls the same load path as "Read this text", plus title: pause, `player.load(text, 0)`, save `text`, `title` and `position`. `saveValue` returns whether the write succeeded; if saving `text` failed, show the "too large to remember" note and clear the saved `text` and `title` (save `null`), so a reload falls back to the sample instead of pairing the old text with the new title and position. Pasted text uses the same path. The textarea is filled with the imported text.
 
 If extraction yields no words, nothing is replaced; the panel shows the "no text" message instead.
 
@@ -152,7 +152,7 @@ In the text panel, next to "Read this text": an "Open file…" button (a visuall
 
 - **Adds**:
   - `src/lib/import/types.ts` — `ImportedDocument`, `ImportProgress`, `ImportError`
-  - `src/lib/import/index.ts` — `importFile(file, onProgress, signal): Promise<ImportedDocument>` (dispatch + dynamic imports)
+  - `src/lib/import/index.ts` — `importFile(file, onProgress, signal): Promise<ImportedDocument>` (dispatch by extension; magic bytes only for names without one; dynamic imports; re-exports the types)
   - `src/lib/import/txt.ts` — `decodeText(bytes): string`
   - `src/lib/import/html.ts` — pure `htmlToText(doc: Document): string`, shared by EPUB and Markdown
   - `src/lib/import/markdown.ts` — `importMarkdown(bytes, fileName)`, plus pure `stripFrontMatter(md)`, `preprocessObsidian(md)`
@@ -163,8 +163,8 @@ In the text panel, next to "Read this text": an "Open file…" button (a visuall
   - Dependencies: `jszip`, `marked`, `pdfjs-dist`; dev: `happy-dom` (worker referenced through Vite's `?url` import so it's emitted as a local asset)
 - **Changes**:
   - `src/lib/storage/local.ts` — `saveValue` returns `boolean` (true on success)
-  - `src/components/TextPanel.svelte` — "Open file…", drop target, status line
-  - `src/App.svelte` — title state, load path shared by paste and import, header title
+  - `src/components/TextPanel.svelte` — "Open file…" (visually hidden file input in a label), drop target on the panel, status line (`role="status"`), one import at a time via `AbortController`; "Read this text" also cancels a running import
+  - `src/App.svelte` — `title` state and storage key, `loadDocument(text, title): boolean` shared by paste and import, header "{title} · {n} words" with ellipsis
 - **Depends on**: Reader core (Player, storage, TextPanel)
 
 ### Interfaces
@@ -202,8 +202,8 @@ Concrete, testable steps, derived from R/E/A/S. Implement one at a time; code is
 - [x] **O5**: `epub.ts` (`parseOpf`, `isDrmProtected`, `importEpub` with progress, yielding and abort) — verify by: tests on EPUBs built with JSZip: spine order, `linear="no"` skipped, title, font-only encryption allowed, DRM error, missing container → damaged error, abort stops early
 - [x] **O6**: `pdf.ts` pure clean-up (`linesToParagraphs`, `joinHyphenation`, `dropPageNumbers`) — verify by: tests on synthetic lines: paragraph gaps, hyphen joins only before lowercase, page-number lines dropped only at page top/bottom
 - [x] **O7**: `importPdf` with pdf.js (local worker via `?url`, no remote CMaps/fonts, progress, abort, password/no-text/damaged errors) — verify by: browser check with generated PDFs (one plain, one 500 pages) and the network log showing no requests outside the app
-- [ ] **O8**: `index.ts` `importFile` dispatch (extension, then magic bytes; unsupported error; dynamic imports) — verify by: tests for each extension, magic-byte fallback, unknown file → unsupported; build output shows separate chunks for jszip, marked and pdf.js
-- [ ] **O9**: UI: "Open file…" and drop target in TextPanel, status line (progress, errors, storage note), cancel previous import on a new file, shared load path with title in App, title in header — verify by: browser check opening a `.txt`, `.md` (Obsidian sample), EPUB and PDF; reload keeps title and position; error messages for unsupported/DRM/scanned files; app shell still < 100 KB gzipped
+- [x] **O8**: `index.ts` `importFile` dispatch (extension, then magic bytes; unsupported error; dynamic imports) — verify by: tests for each extension, magic-byte fallback, unknown file → unsupported (importers mocked, so dispatch is tested on its own)
+- [x] **O9**: UI: "Open file…" and drop target in TextPanel, status line (progress, errors, storage note), cancel previous import on a new file, shared load path with title in App, title in header — verify by: browser check opening a `.txt`, `.md` (Obsidian sample), EPUB and PDF; reload keeps title and position; error messages for unsupported/DRM/scanned files; build output shows separate chunks for jszip, marked and pdf.js (plus the pdf.js worker asset) and the app shell still < 100 KB gzipped
 
 ---
 
@@ -233,3 +233,7 @@ Bound by [docs/SAFEGUARDS.md](../../SAFEGUARDS.md). Feature-specific additions:
 | 2026-10-04 | R, A       | Callout title becomes its own paragraph                                                                                                  | Trying O4 on a real note: the title ran into the body as one sentence with no pause ("Keep the eyes still The pivot…")                   |
 | 2026-10-04 | A, S       | Text items → lines moves into pure `itemsToLines` in `pdf-text.ts`                                                                       | Specifying O7: line building and space insertion are pure logic worth unit tests without pdf.js                                          |
 | 2026-10-04 | A          | Line spacing for paragraph detection = smallest normal gap, not the median gap                                                           | O7 browser check: a 3-line page with one paragraph break had gaps [2L, L]; their median (1.5L) hid the break. Long pages were unaffected |
+| 2026-10-05 | O          | Separate-chunk check moves from O8 to O9                                                                                                 | Chunks only appear in the build once the UI imports `importFile` (O9)                                                                    |
+| 2026-10-05 | A          | Magic-byte fallback only for files without an extension                                                                                  | O8 review: a real `.docx` (a ZIP) was sniffed as EPUB and reported as damaged instead of unsupported                                     |
+| 2026-10-05 | A          | Failed text save clears saved text and title                                                                                             | Specifying O9: otherwise a reload would show the previous document under the new title, with the new document's position                 |
+| 2026-10-07 | S          | Synced with code after O9                                                                                                                | Sync step of the feature loop. Bundle: shell 23.3 KB gz; markdown 14.2, epub 30.0, pdf 130.3 KB gz + worker, each loaded on demand       |
